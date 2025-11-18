@@ -1,87 +1,56 @@
 pipeline {
-  // Tout le pipeline tourne sur un agent Windows. Si tu préfères,
-  // tu peux laisser "any" et ne cibler que le stage Docker avec agent { label 'docker-windows' }.
-  agent { label 'docker-windows' }
-
-  tools {
-    jdk   'jdk17'
-    maven 'maven'
-  }
-
-  environment {
-    // ----- SonarCloud -----
-    ORG          = 'zinebmouman'                // organization SonarCloud
-    PROJECT_KEY  = 'resevation_devices'         // projectKey SonarCloud
-    SONAR_TOKEN  = credentials('SONAR_TOKEN3')  // Secret Text
-
-    MAVEN_OPTS   = '-Xmx1024m'
-
-    // ----- Azure Container Registry -----
-    ACR   = 'acrreservation2.azurecr.io'        // loginServer de l'ACR
-    IMAGE = 'reservation-backend'
-    TAG   = "${env.BUILD_NUMBER}"
-  }
-
-  stages {
-
-    stage('Checkout') {
-      steps {
-        git branch: 'main', url: 'https://github.com/zinebmouman/resevation_devices.git'
-      }
-    }
-
-    stage('Build & Unit Tests (backend)') {
-      steps {
-        dir('backend') {
-          bat 'mvn -B -U clean verify'
+    agent any
+    
+    stages {
+        // Étape 1: Récupérer le code
+        stage('Clone') {
+            steps {
+                git branch: 'develop', 
+                url: 'https://github.com/TON_USERNAME/NOM_DU_REPO.git'
+            }
         }
-      }
-      post {
+        
+        // Étape 2: Compiler
+        stage('Build') {
+            steps {
+                sh 'mvn clean compile'
+            }
+        }
+        
+        // Étape 3: Tests
+        stage('Test') {
+            steps {
+                sh 'mvn test'
+            }
+        }
+        
+        // Étape 4: Créer le package
+        stage('Package') {
+            steps {
+                sh 'mvn package'
+            }
+        }
+        
+        // Étape 5: Analyse SonarQube
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('sonarqube') {
+                    sh 'mvn sonar:sonar'
+                }
+            }
+        }
+    }
+    
+    // Actions après le pipeline
+    post {
         always {
-          junit allowEmptyResults: true, testResults: 'backend/target/surefire-reports/*.xml'
-          archiveArtifacts artifacts: 'backend/target/*.jar', fingerprint: true
+            echo 'Pipeline terminé'
         }
-      }
-    }
-
-    stage('SonarCloud Analysis (backend)') {
-      steps {
-        dir('backend') {
-          bat """
-            mvn -B -e sonar:sonar ^
-              -Dsonar.projectKey=%PROJECT_KEY% ^
-              -Dsonar.organization=%ORG% ^
-              -Dsonar.host.url=https://sonarcloud.io ^
-              -Dsonar.token=%SONAR_TOKEN%
-          """
+        success {
+            echo 'SUCCÈS !'
         }
-      }
-    }
-
-    stage('Build & Push to ACR') {
-      // Si tu veux cibler un autre nœud uniquement pour ce stage :
-      // agent { label 'docker-windows' }
-      steps {
-        withCredentials([usernamePassword(credentialsId: 'acr-jenkins',
-                                          usernameVariable: 'ACR_USER',
-                                          passwordVariable: 'ACR_PASS')]) {
-          bat """
-            echo %ACR_PASS% | docker login %ACR% -u %ACR_USER% --password-stdin
-            cd backend
-            docker build -t %ACR%/%IMAGE%:%TAG% .
-            docker push %ACR%/%IMAGE%:%TAG%
-            docker tag %ACR%/%IMAGE%:%TAG% %ACR%/%IMAGE%:latest
-            docker push %ACR%/%IMAGE%:latest
-          """
+        failure {
+            echo 'ÉCHEC !'
         }
-      }
     }
-  }
-
-  post {
-    success {
-      echo "Pipeline OK → Image pushed: ${env.ACR}/${env.IMAGE}:${env.TAG}"
-    }
-    failure { echo 'Pipeline KO' }
-  }
 }
