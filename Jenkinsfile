@@ -14,29 +14,29 @@ pipeline {
         stage('Checkout') {
             steps {
                 checkout scm
-                echo "Récupération du code - Build #${env.BUILD_NUMBER}"
+                echo "📦 Récupération du code - Build #${env.BUILD_NUMBER}"
             }
         }
         
         stage('Build') {
             steps {
-                echo 'Compilation en cours...'
+                echo '🔨 Compilation en cours...'
                 bat 'echo Building reservation app...'
             }
         }
         
         stage('Tests') {
             steps {
-                echo 'Execution des tests...'
+                echo '🧪 Exécution des tests...'
                 script {
-                    bat 'mkdir test-reports 2>nul || echo Dossier existe'
+                    bat 'mkdir test-reports 2>nul || echo "Dossier existe"'
                     writeFile file: 'test-reports/TEST-com.example.backend.xml', 
                     text: '''<?xml version="1.0" encoding="UTF-8"?>
 <testsuite name="com.example.backend" tests="1" failures="0" errors="0" skipped="0" time="2.14">
     <testcase name="testReservationService" classname="com.example.backend.ReservationServiceTest" time="2.14"/>
 </testsuite>'''
                 }
-                echo 'Rapport de test genere'
+                echo '📋 Rapport de test généré'
             }
             post {
                 always {
@@ -47,34 +47,42 @@ pipeline {
         
         stage('SonarQube Analysis') {
             steps {
-                echo 'Analyse SonarCloud en cours...'
+                echo '📊 Début analyse SonarCloud...'
                 script {
-                    bat '''
-                        echo "Analyse SonarQube simulee"
-                        echo "Project Key: salmaammari_reservation-devices"
-                        echo "Organization: salmaammari"
-                        echo "Host: https://sonarcloud.io"
-                    '''
+                    // VRAIE ANALYSE SONARCLOUD
+                    withSonarQubeEnv('SonarCloud') {
+                        bat """
+                            sonar-scanner ^
+                            -Dsonar.projectKey=${SONAR_PROJECT_KEY} ^
+                            -Dsonar.organization=${SONAR_ORGANIZATION} ^
+                            -Dsonar.sources=. ^
+                            -Dsonar.host.url=https://sonarcloud.io ^
+                            -Dsonar.projectVersion=${env.BUILD_NUMBER}
+                        """
+                    }
                 }
+                echo '✅ Analyse SonarCloud envoyée'
             }
         }
         
         stage('Quality Gate Check') {
             steps {
-                echo 'Verification qualite...'
+                echo '🔍 Attente du résultat Quality Gate...'
                 script {
-                    bat '''
-                        echo "Verification qualite simulee"
-                        echo "Qualite du code: EXCELLENTE"
-                        echo "Securite: OPTIMALE"
-                    '''
+                    timeout(time: 5, unit: 'MINUTES') {
+                        def qg = waitForQualityGate()
+                        if (qg.status != 'OK') {
+                            error "❌ Quality Gate échouée: ${qg.status}"
+                        }
+                        echo "✅ Quality Gate: ${qg.status}"
+                    }
                 }
             }
         }
         
         stage('Build Docker Image') {
             steps {
-                echo 'Construction image Docker...'
+                echo '🐳 Construction image Docker...'
                 script {
                     bat '''
                         echo "SIMULATION: Docker build -t reservation-app:latest ."
@@ -86,12 +94,12 @@ pipeline {
         
         stage('Deploy to Azure AKS') {
             steps {
-                echo 'Deploiement sur Azure AKS...'
+                echo '🚀 Déploiement sur Azure AKS...'
                 script {
                     bat '''
                         echo "SIMULATION: az aks get-credentials"
                         echo "SIMULATION: kubectl set image deployment"
-                        echo "Deploiement sur AKS reussi"
+                        echo "Deploiement sur AKS réussi"
                     '''
                 }
             }
@@ -99,7 +107,7 @@ pipeline {
         
         stage('Health Check') {
             steps {
-                echo 'Verification sante...'
+                echo '🏥 Vérification santé...'
                 script {
                     bat '''
                         echo "SIMULATION: Verification AKS: kubectl get pods"
@@ -112,15 +120,15 @@ pipeline {
     
     post {
         always {
-            echo "Build #${env.BUILD_NUMBER} termine"
-            bat 'rmdir /s /q test-reports 2>nul || echo Nettoyage effectue'
+            echo "🏁 Build #${env.BUILD_NUMBER} terminé"
+            bat 'rmdir /s /q test-reports 2>nul || echo "Nettoyage effectué"'
         }
         success {
-            echo 'CI/CD Pipeline executee avec succes!'
-            echo "SonarQube: https://sonarcloud.io/project/overview?id=salmaammari_reservation-devices"
+            echo '✅ CI/CD Pipeline exécutée avec succès!'
+            echo "📊 SonarQube: https://sonarcloud.io/project/overview?id=${SONAR_PROJECT_KEY}"
         }
         failure {
-            echo 'Pipeline echouee - Verifiez les logs'
+            echo '❌ Pipeline échouée - Vérifiez les logs'
         }
     }
 }
