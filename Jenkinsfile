@@ -1,56 +1,28 @@
 pipeline {
     agent any
-    
-    stages {
-        // Étape 1: Récupérer le code
-        stage('Clone') {
-            steps {
-                git branch: 'develop', 
-                url: 'https://github.com/TON_USERNAME/NOM_DU_REPO.git'
-            }
-        }
-        
-        // Étape 2: Compiler
-        stage('Build') {
-            steps {
-                sh 'mvn clean compile'
-            }
-        }
-        
-        // Étape 3: Tests
-        stage('Test') {
-            steps {
-                sh 'mvn test'
-            }
-        }
-        
-        // Étape 4: Créer le package
-        stage('Package') {
-            steps {
-                sh 'mvn package'
-            }
-        }
-        
-        // Étape 5: Analyse SonarQube
-        stage('SonarQube Analysis') {
-            steps {
-                withSonarQubeEnv('sonarqube') {
-                    sh 'mvn sonar:sonar'
-                }
-            }
-        }
+    triggers {
+        pollSCM('* * * * *')  // ← Vérifie toutes les minutes
     }
     
-    // Actions après le pipeline
-    post {
-        always {
-            echo 'Pipeline terminé'
+    stages {
+        stage('Diagnostic Polling') {
+            steps {
+                echo '🔍 DÉBUT DIAGNOSTIC POLLING'
+                echo "📅 Heure actuelle: ${new Date()}"
+                echo "🔗 Repository: ${env.GIT_URL}"
+                echo "🔄 Branche: ${env.GIT_BRANCH}"
+                echo "👤 Commit: ${env.GIT_COMMIT}"
+                sh 'git log --oneline -3'  // Montre les 3 derniers commits
+            }
         }
-        success {
-            echo 'SUCCÈS !'
+        
+        stage('Checkout') {
+            steps {
+                checkout scm
+                echo '✅ Code récupéré'
+            }
         }
-        failure {
-            echo 'ÉCHEC !'
-        }
+        
+        // ... vos autres étapes
     }
 }
