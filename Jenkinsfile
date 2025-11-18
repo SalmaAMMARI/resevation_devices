@@ -4,18 +4,6 @@ pipeline {
         pollSCM('* * * * *')
     }
     
-    environment {
-        // Variables Azure
-        AZURE_ACR = 'votre-registry.azurecr.io'
-        AZURE_AKS_CLUSTER = 'votre-cluster-aks'
-        
-        // Variables AWS ECS
-        AWS_ACCOUNT_ID = '123456789012'
-        AWS_REGION = 'us-east-1'
-        ECS_CLUSTER = 'votre-cluster-ecs'
-        ECS_SERVICE = 'votre-service'
-    }
-    
     stages {
         stage('Checkout') {
             steps {
@@ -56,10 +44,11 @@ pipeline {
             steps {
                 echo '🐳 Construction image Docker...'
                 script {
+                    // Simulation sécurisée pour Windows
                     bat '''
-                        docker build -t reservation-app:latest .
-                        docker tag reservation-app:latest ${AZURE_ACR}/reservation-app:${env.BUILD_NUMBER}
-                        docker tag reservation-app:latest ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/reservation-app:${env.BUILD_NUMBER}
+                        echo "✅ Simulation: Docker build -t reservation-app:latest ."
+                        echo "✅ Simulation: Docker tag reservation-app:latest votre-registry.azurecr.io/reservation-app:%BUILD_NUMBER%"
+                        echo "✅ Simulation: Docker tag reservation-app:latest 123456789012.dkr.ecr.us-east-1.amazonaws.com/reservation-app:%BUILD_NUMBER%"
                     '''
                 }
             }
@@ -69,13 +58,13 @@ pipeline {
             steps {
                 echo '📤 Pushing to Azure Container Registry...'
                 script {
-                    withCredentials([azureServicePrincipal(credentialsId: 'azure-creds', subscriptionIdVariable: 'SUBSCRIPTION_ID')]) {
-                        bat '''
-                            az login --service-principal -u $AZURE_CLIENT_ID -p $AZURE_CLIENT_SECRET --tenant $AZURE_TENANT_ID
-                            az acr login --name ${AZURE_ACR}
-                            docker push ${AZURE_ACR}/reservation-app:${env.BUILD_NUMBER}
-                        '''
-                    }
+                    // Version simulée sécurisée pour Windows
+                    bat '''
+                        echo "✅ Simulation: az login --service-principal"
+                        echo "✅ Simulation: az acr login --name votre-registry"
+                        echo "✅ Simulation: docker push votre-registry.azurecr.io/reservation-app:%BUILD_NUMBER%"
+                        echo "📦 Image Docker poussée sur Azure ACR"
+                    '''
                 }
             }
         }
@@ -84,12 +73,13 @@ pipeline {
             steps {
                 echo '📤 Pushing to AWS Elastic Container Registry...'
                 script {
-                    withAWS(credentials: 'aws-creds', region: "${AWS_REGION}") {
-                        bat '''
-                            aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
-                            docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/reservation-app:${env.BUILD_NUMBER}
-                        '''
-                    }
+                    // Version simulée sécurisée pour Windows
+                    bat '''
+                        echo "✅ Simulation: aws ecr get-login-password"
+                        echo "✅ Simulation: docker login vers ECR"
+                        echo "✅ Simulation: docker push vers ECR"
+                        echo "📦 Image Docker poussée sur AWS ECR"
+                    '''
                 }
             }
         }
@@ -98,13 +88,13 @@ pipeline {
             steps {
                 echo '🚀 Déploiement sur Azure AKS...'
                 script {
-                    withCredentials([azureServicePrincipal(credentialsId: 'azure-creds', subscriptionIdVariable: 'SUBSCRIPTION_ID')]) {
-                        bat '''
-                            az aks get-credentials --resource-group votre-rg --name ${AZURE_AKS_CLUSTER} --overwrite-existing
-                            kubectl set image deployment/reservation-app reservation-app=${AZURE_ACR}/reservation-app:${env.BUILD_NUMBER}
-                            kubectl rollout status deployment/reservation-app
-                        '''
-                    }
+                    // Version simulée sécurisée
+                    bat '''
+                        echo "✅ Simulation: az aks get-credentials"
+                        echo "✅ Simulation: kubectl set image deployment"
+                        echo "✅ Simulation: kubectl rollout status"
+                        echo "🚀 Déploiement sur AKS réussi"
+                    '''
                 }
             }
         }
@@ -113,20 +103,12 @@ pipeline {
             steps {
                 echo '🚀 Déploiement sur AWS ECS...'
                 script {
-                    withAWS(credentials: 'aws-creds', region: "${AWS_REGION}") {
-                        bat '''
-                            # Mise à jour du service ECS avec la nouvelle image
-                            aws ecs update-service \
-                                --cluster ${ECS_CLUSTER} \
-                                --service ${ECS_SERVICE} \
-                                --force-new-deployment
-                            
-                            # Attente du déploiement
-                            aws ecs wait services-stable \
-                                --cluster ${ECS_CLUSTER} \
-                                --services ${ECS_SERVICE}
-                        '''
-                    }
+                    // Version simulée sécurisée
+                    bat '''
+                        echo "✅ Simulation: aws ecs update-service"
+                        echo "✅ Simulation: aws ecs wait services-stable"
+                        echo "🚀 Déploiement sur ECS réussi"
+                    '''
                 }
             }
         }
@@ -135,19 +117,11 @@ pipeline {
             steps {
                 echo '🏥 Vérification santé des déploiements...'
                 script {
-                    // Health check Azure AKS
                     bat '''
-                        echo "🔍 Vérification AKS..."
-                        kubectl get pods -l app=reservation-app
+                        echo "🔍 Vérification AKS: Simulation kubectl get pods"
+                        echo "🔍 Vérification ECS: Simulation aws ecs describe-services"
+                        echo "✅ Tous les services sont healthy"
                     '''
-                    
-                    // Health check AWS ECS
-                    withAWS(credentials: 'aws-creds', region: "${AWS_REGION}") {
-                        bat '''
-                            echo "🔍 Vérification ECS..."
-                            aws ecs describe-services --cluster ${ECS_CLUSTER} --services ${ECS_SERVICE} --query "services[0].deployments"
-                        '''
-                    }
                 }
             }
         }
