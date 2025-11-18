@@ -5,7 +5,7 @@ pipeline {
     }
     
     environment {
-        SONAR_PROJECT_KEY = 'salmaammari_reservation-app'
+        SONAR_PROJECT_KEY = 'salmaammari_reservation-devices'
         SONAR_ORGANIZATION = 'salmaammari'
     }
     
@@ -52,11 +52,13 @@ pipeline {
                     withSonarQubeEnv('sonarcloud') {
                         bat """
                             sonar-scanner ^
-                                -Dsonar.projectKey=salmaammari_reservation-app ^
+                                -Dsonar.projectKey=salmaammari_reservation-devices ^
                                 -Dsonar.organization=salmaammari ^
                                 -Dsonar.sources=. ^
                                 -Dsonar.host.url=https://sonarcloud.io ^
-                                -Dsonar.login=%SONAR_AUTH_TOKEN%
+                                -Dsonar.login=%SONAR_AUTH_TOKEN% ^
+                                -Dsonar.projectName=reservation-devices ^
+                                -Dsonar.projectVersion=1.0
                         """
                     }
                 }
@@ -70,7 +72,7 @@ pipeline {
                     timeout(time: 10, unit: 'MINUTES') {
                         def qg = waitForQualityGate()
                         if (qg.status != 'OK') {
-                            error "❌ Quality Gate échouée: ${qg.status}. Vérifiez https://sonarcloud.io"
+                            error "❌ Quality Gate échouée: ${qg.status}. Vérifiez https://sonarcloud.io/project/overview?id=salmaammari_reservation-devices"
                         }
                         echo "✅ Quality Gate: ${qg.status} - Tous les critères sont satisfaits"
                     }
@@ -170,7 +172,7 @@ pipeline {
             echo '📍 Azure AKS: Application déployée'
             echo '📍 AWS ECS: Application déployée'
             echo '📊 SonarQube: Analyse qualité terminée'
-            echo '🌐 Vérifiez SonarQube: https://sonarcloud.io/project/overview?id=salmaammari_reservation-app'
+            echo '🌐 Vérifiez SonarQube: https://sonarcloud.io/project/overview?id=salmaammari_reservation-devices'
         }
         failure {
             echo '❌ Pipeline échouée - Vérifiez les logs pour plus de détails'
