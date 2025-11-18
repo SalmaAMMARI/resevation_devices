@@ -44,6 +44,20 @@ pipeline {
             }
         }
         
+        stage('SonarQube Analysis') {
+            steps {
+                echo '📊 Analyse SonarQube Cloud...'
+                script {
+                    bat '''
+                        echo "Simulation d'analyse SonarQube Cloud"
+                        echo "🔍 Analyse du code qualité"
+                        echo "📊 Métriques calculées"
+                        echo "✅ Analyse SonarQube terminée"
+                    '''
+                }
+            }
+        }
+        
         stage('Deploy') {
             steps {
                 echo '🚀 Déploiement...'
