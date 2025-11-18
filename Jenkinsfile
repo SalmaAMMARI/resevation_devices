@@ -4,6 +4,11 @@ pipeline {
         pollSCM('* * * * *')
     }
     
+    environment {
+        // ⚠️ REMPLACEZ par votre project key SonarQube
+        SONAR_PROJECT_KEY = 'salmaammari'
+    }
+    
     stages {
         stage('Checkout') {
             steps {
@@ -43,15 +48,26 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 echo '📊 Analyse SonarQube Cloud...'
+                withSonarQubeEnv('sonarqube-cloud') {
+                    bat """
+                        echo "🔍 Lancement de l'analyse SonarQube..."
+                        sonar-scanner ^
+                            -Dsonar.projectKey=${SONAR_PROJECT_KEY} ^
+                            -Dsonar.sources=. ^
+                            -Dsonar.host.url=https://sonarcloud.io ^
+                            -Dsonar.login=${SONAR_TOKEN}
+                    """
+                }
+            }
+        }
+        
+        stage('Quality Gate') {
+            steps {
+                echo '🚦 Vérification Quality Gate...'
                 script {
-                    bat '''
-                        echo "🔗 Connexion à SonarQube Cloud..."
-                        echo "📊 Analyse de la qualité du code..."
-                        echo "🔍 Détection des bugs et vulnérabilités..."
-                        echo "📈 Calcul des métriques de qualité..."
-                        echo "✅ Analyse SonarQube Cloud terminée"
-                        echo "🌐 Rapport disponible sur: https://sonarcloud.io"
-                    '''
+                    timeout(time: 5, unit: 'MINUTES') {
+                        waitForQualityGate abortPipeline: false
+                    }
                 }
             }
         }
@@ -136,21 +152,6 @@ pipeline {
                 }
             }
         }
-        
-        stage('Quality Gate') {
-            steps {
-                echo '🚦 Vérification Quality Gate SonarQube...'
-                script {
-                    bat '''
-                        echo "📊 Vérification des métriques de qualité..."
-                        echo "✅ Aucun bug critique détecté"
-                        echo "🛡️ Aucune vulnérabilité de sécurité"
-                        echo "💡 Dette technique acceptable"
-                        echo "🎯 Quality Gate: PASSED"
-                    '''
-                }
-            }
-        }
     }
     
     post {
@@ -160,8 +161,6 @@ pipeline {
         }
         success {
             echo '✅ Déploiement multi-cloud réussi!'
-            echo '📍 Azure AKS: Application déployée'
-            echo '📍 AWS ECS: Application déployée'
             echo '📊 SonarQube: Analyse qualité terminée'
         }
     }
