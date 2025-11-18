@@ -1,69 +1,117 @@
 pipeline {
     agent any
-    triggers {
-        pollSCM('* * * * *')
-    }
     
     stages {
-        stage('Checkout et Changements') {
+        stage('Diagnostic Sécurité') {
             steps {
-                checkout scm
+                echo '🛡️ DÉBUT DU DIAGNOSTIC SÉCURISÉ'
+                echo '📊 Cette pipeline ne modifie rien'
+            }
+        }
+        
+        stage('Vérification Environnement') {
+            steps {
                 script {
-                    // Affiche les informations de changement
-                    echo "📊 BUILD DÉCLENCHÉ PAR: ${currentBuild.getBuildCauses()}"
-                    echo "🔗 BRANCHE: ${env.GIT_BRANCH}"
-                    echo "📝 COMMIT: ${env.GIT_COMMIT}"
+                    echo "🔍 Informations système:"
+                    echo "- Job: ${env.JOB_NAME}"
+                    echo "- Build: ${env.BUILD_NUMBER}"
+                    echo "- Workspace: ${env.WORKSPACE}"
                     
-                    // Affiche les derniers changements
+                    // Commandes safe pour diagnostic
                     bat '''
-                        echo "📋 DERNIERS CHANGEMENTS:"
-                        git log --oneline -5
+                        echo ✅ Vérification de base Windows:
+                        echo 📅 Date: %date%
+                        echo 🕐 Heure: %time%
+                        echo 📁 Dossier: %cd%
                         echo.
-                        echo "👤 AUTEUR DU DERNIER COMMIT:"
-                        git log -1 --pretty=format:"%an <%ae>"
                     '''
                 }
             }
         }
         
-        stage('Build') {
+        stage('Vérification Outils') {
             steps {
-                echo '🔨 Construction en cours...'
-                bat 'echo Building application...'
-                bat 'dir /B || echo Aucun fichier trouvé'
+                script {
+                    // Vérifie les outils sans les utiliser
+                    bat '''
+                        echo 🔧 Outils disponibles:
+                        java -version 2>nul && echo ✅ Java trouvé || echo ❌ Java non trouvé
+                        mvn --version 2>nul && echo ✅ Maven trouvé || echo ❌ Maven non trouvé
+                        git --version 2>nul && echo ✅ Git trouvé || echo ❌ Git non trouvé
+                        echo.
+                    '''
+                }
             }
         }
         
-        stage('Tests') {
+        stage('Vérification Projet Existant') {
             steps {
-                echo '🧪 Exécution des tests...'
-                bat 'echo Running tests...'
-                sleep 2
+                script {
+                    echo '📂 Analyse du projet existant...'
+                    bat '''
+                        echo 📋 Structure des fichiers:
+                        dir /B 2>nul || echo ℹ️  Aucun fichier trouvé
+                        echo.
+                        
+                        echo 📝 Fichiers de configuration:
+                        if exist pom.xml (
+                            echo ✅ Fichier Maven (pom.xml) détecté
+                            type pom.xml | findstr "<artifactId>" | head -1 2>nul && echo 📦 Projet Maven identifié
+                        ) else (
+                            echo ℹ️  Aucun fichier Maven détecté
+                        )
+                        
+                        if exist package.json (
+                            echo ✅ Fichier Node.js (package.json) détecté
+                        )
+                        
+                        if exist build.gradle (
+                            echo ✅ Fichier Gradle (build.gradle) détecté
+                        )
+                        echo.
+                    '''
+                }
             }
         }
         
-        stage('Analyse Qualité') {
+        stage('Test Lecture Seule') {
             steps {
-                echo '📊 Analyse de la qualité...'
-                bat 'echo Quality analysis...'
+                script {
+                    echo '📖 Test de lecture seule...'
+                    bat '''
+                        echo 🔒 Test permissions lecture:
+                        dir /B > list_files.txt 2>nul && echo ✅ Peut lire les fichiers || echo ❌ Problème lecture
+                        if exist list_files.txt (
+                            type list_files.txt 2>nul && echo ✅ Peut lire le contenu || echo ❌ Problème lecture contenu
+                            del list_files.txt 2>nul
+                        )
+                        echo.
+                    '''
+                }
+            }
+        }
+        
+        stage('Rapport Final') {
+            steps {
+                script {
+                    echo '📊 RAPPORT DE DIAGNOSTIC COMPLET'
+                    echo '✅ Aucune modification effectuée'
+                    echo '✅ Environnement analysé avec succès'
+                    echo '✅ Projet existant préservé'
+                    echo '🛡️ Diagnostic terminé en sécurité'
+                }
             }
         }
     }
     
     post {
         always {
-            echo "🏁 BUILD #${env.BUILD_NUMBER} TERMINÉ"
-            script {
-                // Affiche le statut final
-                if (currentBuild.currentResult == 'SUCCESS') {
-                    echo '🎉 SUCCÈS: Tous les tests passent!'
-                } else {
-                    echo '❌ ÉCHEC: Vérifiez les logs'
-                }
-            }
+            echo "🏁 Diagnostic #${env.BUILD_NUMBER} terminé"
+            echo '📋 Résumé disponible dans les logs'
+            echo '🔧 Prêt pour la configuration réelle'
         }
         success {
-            bat 'echo ✅✅✅ BUILD RÉUSSI ✅✅✅'
+            echo '🎉 Diagnostic réussi - Environnement prêt!'
         }
     }
 }
