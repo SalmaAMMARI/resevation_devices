@@ -5,7 +5,8 @@ pipeline {
     }
     
     environment {
-        SONAR_PROJECT_KEY = 'salmaammari'
+        SONAR_PROJECT_KEY = 'salmaammari_reservation-app'
+        SONAR_ORGANIZATION = 'salmaammari'
     }
     
     stages {
@@ -48,30 +49,31 @@ pipeline {
             steps {
                 echo '📊 Analyse SonarQube Cloud...'
                 script {
-                    // VERSION SANS waitForQualityGate - utilisez seulement l'analyse
-                    bat '''
-                        echo "🚀 Démarrage de l'analyse SonarQube..."
-                        sonar-scanner -Dsonar.projectKey=salmaammari_reservation-app -Dsonar.sources=. -Dsonar.host.url=https://sonarcloud.io
-                        echo "✅ Analyse SonarQube complétée avec succès!"
-                        echo "📈 Résultats disponibles sur: https://sonarcloud.io/project/overview?id=salmaammari_reservation-app"
-                    '''
+                    withSonarQubeEnv('sonarcloud') {
+                        bat """
+                            sonar-scanner ^
+                                -Dsonar.projectKey=salmaammari_reservation-app ^
+                                -Dsonar.organization=salmaammari ^
+                                -Dsonar.sources=. ^
+                                -Dsonar.host.url=https://sonarcloud.io ^
+                                -Dsonar.login=%SONAR_AUTH_TOKEN%
+                        """
+                    }
                 }
             }
         }
         
-        stage('Quality Check') {
+        stage('Quality Gate Check') {
             steps {
                 echo '📋 Vérification de la qualité...'
                 script {
-                    // Simulation de vérification qualité
-                    bat '''
-                        echo "🔍 Vérification des métriques de qualité..."
-                        timeout /t 3 /nobreak > nul
-                        echo "✅ Qualité du code: EXCELLENTE"
-                        echo "🛡️ Sécurité: OPTIMALE" 
-                        echo "💡 Maintenabilité: ÉLEVÉE"
-                        echo "🎯 Tous les critères qualité sont satisfaits"
-                    '''
+                    timeout(time: 10, unit: 'MINUTES') {
+                        def qg = waitForQualityGate()
+                        if (qg.status != 'OK') {
+                            error "❌ Quality Gate échouée: ${qg.status}. Vérifiez https://sonarcloud.io"
+                        }
+                        echo "✅ Quality Gate: ${qg.status} - Tous les critères sont satisfaits"
+                    }
                 }
             }
         }
@@ -168,7 +170,10 @@ pipeline {
             echo '📍 Azure AKS: Application déployée'
             echo '📍 AWS ECS: Application déployée'
             echo '📊 SonarQube: Analyse qualité terminée'
-            echo '🌐 Vérifiez SonarQube: https://sonarcloud.io'
+            echo '🌐 Vérifiez SonarQube: https://sonarcloud.io/project/overview?id=salmaammari_reservation-app'
+        }
+        failure {
+            echo '❌ Pipeline échouée - Vérifiez les logs pour plus de détails'
         }
     }
 }
