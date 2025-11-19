@@ -4,7 +4,6 @@ pipeline {
         pollSCM('H/5 * * * *')  // Poll GitHub every 5 minutes for changes
     }
     environment {
-        DOCKERHUB_CREDENTIALS = credentials('docker-hub-credentials')
         DOCKER_IMAGE = 'salmaammari/reservation-devices'
     }
     stages {
@@ -78,13 +77,6 @@ pipeline {
         }
         failure {
             echo 'Pipeline a échoué! ❌'
-        }
-        always {
-            echo 'Nettoyage des ressources Docker...'
-            bat """
-                docker system prune -f
-                echo "Cleanup completed"
-            """
         }
     }
 }
