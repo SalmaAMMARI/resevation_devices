@@ -1,58 +1,55 @@
 pipeline {
     agent any
-    triggers {
-        pollSCM('H/5 * * * *')  // Poll toutes les 5 minutes
-    }
     environment {
-        SONAR_PROJECT_KEY = 'reservation-devices'
-        SONAR_PROJECT_NAME = 'Reservation Devices'
+        DOCKER_IMAGE = "hibaohd/myapp"
     }
+    tools {
+        jdk 'jdk17'
+        maven 'maven'
+    }
+
     stages {
         stage('Checkout') {
             steps {
-                checkout scm
-                echo "Build #${env.BUILD_NUMBER}"
+                git branch: 'main', url: 'https://github.com/HibaOhd/resevation_devices'
             }
         }
-        stage('Build') {
+
+        stage('Build Backend') {
             steps {
-                echo 'Construction de l application...'
-                bat 'echo "Build step"'
+                dir('backend') {
+                    bat 'mvn clean package'
+                }
             }
         }
-        stage('Test') {
+        stage('Build Frontend') {
             steps {
-                echo 'Exécution des tests...'
-                bat 'echo "Test step"'
+                dir('frontend') {
+                    bat 'npm install'
+                    bat 'npm run build'
+                }
             }
         }
+
         stage('SonarQube Analysis') {
             steps {
-                script {
-                    withSonarQubeEnv('SonarQube') {  // Le nom configuré dans Jenkins
-                        bat """
-                            sonar-scanner ^
-                            -D"sonar.projectKey=${SONAR_PROJECT_KEY}" ^
-                            -D"sonar.projectName=${SONAR_PROJECT_NAME}" ^
-                            -D"sonar.sources=." ^
-                            -D"sonar.host.url=http://localhost:9000" ^
-                            -D"sonar.sourceEncoding=UTF-8"
-                        """
+                dir('backend') {
+                    withSonarQubeEnv('LocalSonar') { // Name of SonarQube server in Jenkins
+                        withCredentials([string(credentialsId: 'SonarToken', variable: 'SONAR_TOKEN')]) {
+                            bat "mvn sonar:sonar -Dsonar.login=%SONAR_TOKEN%"
+                        }
                     }
                 }
             }
         }
     }
+
     post {
         success {
-            echo '✅ Pipeline réussie!'
-            echo '📊 Analyse SonarQube complétée: http://localhost:9000'
+            echo '✅ Build succeeded!'
         }
         failure {
-            echo '❌ Pipeline échouée!'
-        }
-        always {
-            echo '🔚 Fin de l exécution du pipeline'
+            echo '❌ Build failed!'
         }
     }
 }
